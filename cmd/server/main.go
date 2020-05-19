@@ -22,14 +22,16 @@ import (
 
 var (
 	healthy int32
+	cfg     Config
 )
 
 // Config for the main command
 type Config struct {
-	Port     string        `default:"5100"`
-	Graceful time.Duration `default:"5s"`
-	LogLevel string        `default:"info"`
-	MongoURL string        `default:"root:example@localhost:27017"`
+	Port          string        `default:"5100"`
+	Graceful      time.Duration `default:"5s"`
+	LogLevel      string        `default:"info"`
+	MongoURL      string        `default:"root:example@localhost:27017"`
+	MongoDatabase string        `default:"capturedcheckpoints"`
 }
 
 func main() {
@@ -39,7 +41,6 @@ func main() {
 	boolPtr := flag.Bool("help", false, "usage info")
 	flag.Parse()
 
-	var cfg Config
 	if *boolPtr {
 		envconfig.Usage("CAPTUREDCHECKPOINTS", &cfg)
 		return
@@ -130,7 +131,7 @@ func ensureIndex(s *mgo.Session) {
 	session := s.Copy()
 	defer session.Close()
 
-	c := session.DB("store").C("races")
+	c := session.DB(cfg.MongoDatabase).C("races")
 
 	index := mgo.Index{
 		Key:        []string{"Id"},
@@ -152,7 +153,7 @@ func raceByID(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 
 		ID := pat.Param(r, "Id")
 
-		c := session.DB("store").C("races")
+		c := session.DB(cfg.MongoDatabase).C("races")
 
 		var race Race
 		err := c.Find(bson.M{"Id": ID}).One(&race)
@@ -187,7 +188,7 @@ func createOrUpdateRace(s *mgo.Session) func(w http.ResponseWriter, r *http.Requ
 			return
 		}
 
-		c := session.DB("store").C("races")
+		c := session.DB(cfg.MongoDatabase).C("races")
 
 		var race Race
 		err = c.Find(bson.M{"Id": ID}).One(&race)
@@ -237,7 +238,7 @@ func deleteRace(s *mgo.Session) func(w http.ResponseWriter, r *http.Request) {
 
 		ID := pat.Param(r, "Id")
 
-		c := session.DB("store").C("races")
+		c := session.DB(cfg.MongoDatabase).C("races")
 
 		err := c.Remove(bson.M{"Id": ID})
 		if err != nil {
